@@ -7,6 +7,15 @@ module.exports = (err, req, res, next) => {
 
     error.message = err.message;
 
+    //claude  adding to handle error on login
+
+    if (process.env.NODE_ENV === 'development') {
+        console.error('Error:', {
+            message: err.message,
+            stack: err.stack
+        });
+    }
+
     // Wrong Mongoose Object ID Error
     if (err.name === "CastError") {
         console.log(err);
@@ -40,6 +49,7 @@ module.exports = (err, req, res, next) => {
 
     res.status(error.statusCode).json({
         success: false,
-        message: error.message || "Internal Server Error",
+        message: error.message,
+        ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
     });
 };

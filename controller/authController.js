@@ -48,44 +48,49 @@ exports.register = catchAsyncErrors(async (req, res, next) => {
 
 // user login
 exports.login = catchAsyncErrors(async (req, res, next) => {
-    const { email, password } = req.body;
+    try {
+        const { email, password } = req.body;
 
-    // Checks if email and password is entered by user
-    if (!email || !password) {
-        return next(new ErrorHandler("Please enter email & password", 400));
+        if (!email || !password) {
+            return next(new ErrorHandler('Please enter email & password', 400));
+        }
+
+        const user = await User.findOne({ email }).select('+password');
+        
+        if (!user) {
+            return next(new ErrorHandler('Invalid email or password', 401));
+        }
+
+        const isPasswordMatched = await comparePassword(password, user.password);
+
+        if (!isPasswordMatched) {
+            return next(new ErrorHandler('Invalid email or password', 401));
+        }
+
+        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+            expiresIn: '7d'
+        });
+
+        const options = {
+            expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+            path: '/'
+        };
+
+        user.password = undefined;
+
+        res.status(200)
+            .cookie('token', token, options)
+            .json({
+                success: true,
+                token,
+                user
+            });
+    } catch (error) {
+        return next(new ErrorHandler(error.message, 500));
     }
-    // check if our db has user with that email
-    const user = await User.findOne({ email }).exec();
-    if (!user) {
-        return next(new ErrorHandler("Invalid Email!", 401));
-    }
-    // check password
-    const match = await comparePassword(password, user.password);
-
-    if (!match) {
-        return next(new ErrorHandler("Invalid Password!", 401));
-    }
-    // create signed jwt
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-        expiresIn: "7d",
-    });
-
-    // return user and token to client, exclude hashed password
-    user.password = undefined;
-    // send token in cookie
-    // Options for cookie
-    const options = {
-        expires: new Date(
-            Date.now() + process.env.COOKIE_EXPIRES_TIME * 24 * 60 * 60 * 1000
-        ),
-        httpOnly: true,
-    };
-
-    res.status(200).cookie("token", token, options).json({
-        success: true,
-        token,
-        user,
-    });
 });
 
 // user logout
@@ -99,13 +104,31 @@ exports.logout = catchAsyncErrors(async (req, res, next) => {
 });
 
 // get currently logged in user
-exports.currentUser = catchAsyncErrors(async (req, res) => {
-    const user = await User.findById(req.user.id).select("-password").exec();
+exports.currentUser = catchAsyncErrors(async (req, res, next) => {
+    try {
+        if (!req.user) {
+            return res.status(401).json({
+                success: false,
+                message: "Please login first"
+            });
+        }
 
-    res.status(200).json({
-        success: true,
-        user,
-    });
+        const user = await User.findById(req.user.id).select("-password").exec();
+        
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found"
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            user,
+        });
+    } catch (error) {
+        return next(new ErrorHandler(error.message, 500));
+    }
 });
 
 // Update user profile   =>   /api/current-user/update

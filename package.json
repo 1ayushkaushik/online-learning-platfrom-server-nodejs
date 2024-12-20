@@ -5,6 +5,7 @@
     "main": "index.js",
     "scripts": {
         "start": "node index.js",
+        "dev": "nodemon index.js",
         "heroku-postbuild": "cd client && npm install && npm run build"
     },
     "keywords": [],
@@ -16,9 +17,9 @@
         "cookie-parser": "^1.4.6",
         "cors": "^2.8.5",
         "csurf": "^1.11.0",
-        "dotenv": "^16.0.1",
+        "dotenv": "^16.4.7",
         "esm": "^3.2.25",
-        "express": "^4.18.1",
+        "express": "^4.21.2",
         "express-formidable": "^1.2.0",
         "express-jwt": "^7.7.5",
         "jsonwebtoken": "^8.5.1",
@@ -28,5 +29,8 @@
         "query-string": "^7.1.1",
         "slugify": "^1.6.5",
         "stripe": "^9.6.0"
+    },
+    "devDependencies": {
+        "nodemon": "^3.1.9"
     }
 }
